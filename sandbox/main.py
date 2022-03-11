@@ -1,5 +1,6 @@
 import cv2
 import mediapipe as mp
+import numpy as np
 from google.protobuf.json_format import MessageToDict
 
 
@@ -64,7 +65,7 @@ def face_detection_demo_webcam():
                     mp_drawing.draw_detection(image, detection)
             # Flip the image horizontally for a selfie-view display.
             cv2.imshow('MediaPipe Face Detection', cv2.flip(image, 1))
-            if cv2.waitKey(5) & 0xFF == 27:
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
     cap.release()
 
@@ -148,5 +149,115 @@ def hands_detection_analyze_landmark():
                     print(normalized_landmark)
 
 
+def holistic_demo():
+    mp_drawing = mp.solutions.drawing_utils
+    mp_holistic = mp.solutions.holistic
+
+    cap = cv2.VideoCapture(0)
+
+    # create black image with the same size as camera frame
+    _, frame = cap.read()
+    im_height, im_width, ch = frame.shape
+    blank_image = np.zeros([im_height, im_width, ch], dtype=np.uint8)
+
+    with mp_holistic.Holistic(
+            min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        while cap.isOpened():
+            ret, frame = cap.read()
+
+            # recolor feed to RGB and mirror it because I use front camera here
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = cv2.flip(image, 1)
+            results = holistic.process(image)
+
+            annotated_image = blank_image.copy()
+
+            # Draw face landmarks
+            mp_drawing.draw_landmarks(annotated_image, results.face_landmarks, mp_holistic.FACEMESH_TESSELATION)
+
+            # Draw hands
+            mp_drawing.draw_landmarks(annotated_image, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+            mp_drawing.draw_landmarks(annotated_image, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+
+            # Pose detection
+            mp_drawing.draw_landmarks(annotated_image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
+
+            cv2.imshow('Annotated Image', annotated_image)
+
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def holistic_demo_with_styling():
+    mp_drawing = mp.solutions.drawing_utils
+    mp_holistic = mp.solutions.holistic
+
+    # the color is in BGR
+    hand_landmarks_style = mp_drawing.DrawingSpec(color=(255, 0, 0),
+                                                  thickness=2,
+                                                  circle_radius=2)
+
+    hand_connection_style = mp_drawing.DrawingSpec(color=(255, 0, 255),
+                                                   thickness=2,
+                                                   circle_radius=2)
+
+    face_landmarks_style = mp_drawing.DrawingSpec(color=(0, 239, 236),
+                                                  thickness=1,
+                                                  circle_radius=1)
+
+    face_connection_style = mp_drawing.DrawingSpec(color=(255, 255, 255),
+                                                   thickness=1,
+                                                   circle_radius=1)
+
+    cap = cv2.VideoCapture(0)
+
+    # create black image with the same size as camera frame
+    _, frame = cap.read()
+    im_height, im_width, ch = frame.shape
+    blank_image = np.zeros([im_height, im_width, ch], dtype=np.uint8)
+
+    with mp_holistic.Holistic(
+            min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+        while cap.isOpened():
+            ret, frame = cap.read()
+
+            # recolor feed to RGB and mirror it because I use front camera here
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = cv2.flip(image, 1)
+            results = holistic.process(image)
+
+            annotated_image = blank_image.copy()
+
+            # Draw face landmarks
+            mp_drawing.draw_landmarks(annotated_image,
+                                      results.face_landmarks, mp_holistic.FACEMESH_TESSELATION,
+                                      face_landmarks_style,
+                                      face_connection_style)
+
+            # Draw hands
+            mp_drawing.draw_landmarks(annotated_image,
+                                      results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
+                                      hand_landmarks_style,
+                                      hand_connection_style)
+            mp_drawing.draw_landmarks(annotated_image,
+                                      results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
+                                      hand_landmarks_style,
+                                      hand_connection_style)
+
+            # Pose detection
+            mp_drawing.draw_landmarks(annotated_image, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
+
+            cv2.imshow('Annotated Image', annotated_image)
+
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
 if __name__ == '__main__':
-    hands_detection_analyze_landmark()
+    holistic_demo_with_styling()
